@@ -43,18 +43,29 @@ def encode():
         secret_message = request.form['message']
         password = request.form.get('password', '')
 
-        # 1. ENCRYPT & TAG
+        # 1. SECURITY LOGIC
         if password:
             key = get_key(password)
             f = Fernet(key)
             encrypted_bytes = f.encrypt(secret_message.encode())
-            # Add LOCKED_FLAG so we normally know it's locked
             final_payload = LOCKED_FLAG + encrypted_bytes.decode() + DELIMITER
         else:
             final_payload = secret_message + DELIMITER
 
-        # 2. HIDE IN IMAGE
-        img = Image.open(image_file).convert('RGB')
+        # 2. IMAGE PROCESSING (Handle ANY format)
+        # We open the image and ensure it's in RGB mode.
+        # This handles JPG, BMP, GIF, WEBP automatically.
+        img = Image.open(image_file)
+        
+        # If it has transparency (RGBA), paste it onto white background to make it RGB
+        if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+            alpha = img.convert('RGBA').split()[-1]
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img, mask=alpha)
+            img = bg
+        else:
+            img = img.convert('RGB')
+
         pixels = img.load()
         
         msg_bytes = final_payload.encode('utf-8')
@@ -81,6 +92,7 @@ def encode():
                 break
 
         img_io = io.BytesIO()
+        # ALWAYS save as PNG (Lossless) to preserve the hidden data
         img.save(img_io, 'PNG')
         img_io.seek(0)
         return send_file(img_io, mimetype='image/png', as_attachment=True, download_name='vault_secured.png')
@@ -105,7 +117,6 @@ def decode():
         decoded_bytes = bytearray()
         found = False
         
-        # 1. EXTRACT HIDDEN DATA
         for y in range(img.height):
             if found: break 
             for x in range(img.width):
@@ -129,15 +140,12 @@ def decode():
         if not found:
             return jsonify({"error": "No hidden message found."}), 400
 
-        # 2. SMART DECRYPTION LOGIC
         full_content = decoded_bytes[:-len(DELIMITER)].decode('utf-8', errors='ignore')
 
-        # SCENARIO A: Standard Locked File (Has Flag)
         if full_content.startswith(LOCKED_FLAG):
             if not password:
-                return jsonify({"error": "LOCKED ARTIFACT. PASSWORD REQUIRED."}), 403
+                return jsonify({"error": "🔒 LOCKED ARTIFACT. PASSWORD REQUIRED."}), 403
             
-            # Decrypt
             encrypted_payload = full_content[len(LOCKED_FLAG):]
             try:
                 key = get_key(password)
@@ -147,22 +155,18 @@ def decode():
             except:
                 return jsonify({"error": "⛔ ACCESS DENIED: WRONG PASSWORD"}), 403
         
-        # SCENARIO B: Legacy/Raw Encrypted File (No Flag, but looks encrypted)
-        # Fernet tokens always start with "gAAAAA"
         elif full_content.startswith("gAAAAA"):
             if not password:
                 return jsonify({"error": "🔒 ENCRYPTED DATA DETECTED. PASSWORD REQUIRED."}), 403
             
-            # Try Decrypting raw content
             try:
                 key = get_key(password)
                 f = Fernet(key)
                 original_message = f.decrypt(full_content.encode()).decode()
                 return jsonify({"message": original_message})
             except:
-                return jsonify({"error": "⛔ ACCESS DENIED: WRONG PASSWORD"}), 403
+                return jsonify({"error": " ACCESS DENIED: WRONG PASSWORD"}), 403
 
-        # SCENARIO C: Not Encrypted
         else:
             if password:
                 return jsonify({"error": "⚠️ WARNING: This file is NOT encrypted."}), 400
@@ -175,4 +179,4 @@ def decode():
 
 if __name__ == '__main__':
     if not os.path.exists('static'): os.makedirs('static')
-    app.run(debug=True, port=5000)  
+    app.run(debug=True, port=5000)
