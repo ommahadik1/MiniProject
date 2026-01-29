@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invisible Ink Vault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="scene">
+        <div class="card" id="main-card">
+            
+            <div class="card-face card-front">
+                <header>
+                    <div class="status-badge">SYSTEM ONLINE</div>
+                    <h1>VAULT // LOCK</h1>
+                </header>
+
+                <div class="content-body">
+                    <div class="input-group">
+                        <label>SOURCE IMAGE (DRAG & DROP)</label>
+                        <div class="file-input-wrapper drop-zone" id="drop-encode">
+                            <input type="file" id="upload-encode" accept="image/png, image/jpeg" class="hidden-input">
+                            <label for="upload-encode" class="custom-file-btn">
+                                <span>📂 SELECT IMAGE</span>
+                            </label>
+                            <span id="file-name-encode" class="file-name-display">No file selected</span>
+                        </div>
+                        <div id="preview-encode" class="image-preview"></div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>PAYLOAD & SECURITY</label>
+                        <textarea id="secret-message" placeholder="Input secret data stream..."></textarea>
+                        
+                        <input type="password" id="pass-encode" class="password-input" placeholder="SET ENCRYPTION KEY (PASSWORD)">
+                        
+                        <div class="capacity-wrapper">
+                            <span>CAPACITY:</span>
+                            <div class="capacity-bar"><div id="capacity-fill" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+
+                    <button class="action-btn" onclick="encodeMessage()">ENCRYPT & DOWNLOAD</button>
+                    <div id="encode-status" class="status">Ready</div>
+                </div>
+
+                <button class="flip-btn" onclick="flipCard()">SWITCH TO DECRYPT ↻</button>
+            </div>
+
+            <div class="card-face card-back">
+                <header>
+                    <div class="status-badge warning">DECRYPT MODE</div>
+                    <h1>VAULT // UNLOCK</h1>
+                </header>
+
+                <div class="content-body">
+                    <div class="input-group">
+                        <label>TARGET ARTIFACT</label>
+                        <div class="file-input-wrapper drop-zone" id="drop-decode">
+                            <input type="file" id="upload-decode" accept="image/png" class="hidden-input">
+                            <label for="upload-decode" class="custom-file-btn">
+                                <span>🔓 SELECT PNG</span>
+                            </label>
+                            <span id="file-name-decode" class="file-name-display">No file selected</span>
+                        </div>
+                        <div id="preview-decode" class="image-preview"></div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>SECURITY CLEARANCE</label>
+                        <input type="password" id="pass-decode" class="password-input" placeholder="ENTER DECRYPTION KEY">
+                        
+                        <div class="output-box">
+                            <p id="decoded-output" class="result-text">Awaiting Authorization...</p>
+                        </div>
+                    </div>
+
+                    <button class="action-btn" onclick="decodeMessage()">DECRYPT ARTIFACT</button>
+                </div>
+
+                <button class="flip-btn" onclick="flipCard()">↻ SWITCH TO ENCRYPT</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
