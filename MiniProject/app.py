@@ -16,7 +16,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from authlib.integrations.flask_client import OAuth
 
 app = Flask(__name__)
-app.secret_key = "REPLACE_WITH_A_REAL_SECRET_KEY_FOR_SESSION_SECURITY"
+# WARNING: In production, use a secure environment variable for this
+app.secret_key = os.environ.get("SECRET_KEY", "REPLACE_WITH_A_REAL_SECRET_KEY")
 CORS(app)
 
 # --- DATABASE SETUP (VERCEL FIX) ---
@@ -24,6 +25,7 @@ CORS(app)
 db_path = os.path.join(os.getcwd(), 'vault.db') # Default for local computer
 
 # If running on Vercel (Production), switch to /tmp
+# This prevents the "Read-only file system" error
 if os.environ.get('VERCEL'):
     db_path = '/tmp/vault.db'
 
@@ -39,6 +41,7 @@ login_manager.login_view = 'login'
 oauth = OAuth(app)
 
 # 1. GOOGLE
+# Ensure you update these with your Real Keys or Environment Variables
 app.config['GOOGLE_CLIENT_ID'] = 'YOUR_GOOGLE_CLIENT_ID_HERE'
 app.config['GOOGLE_CLIENT_SECRET'] = 'YOUR_GOOGLE_CLIENT_SECRET_HERE'
 
