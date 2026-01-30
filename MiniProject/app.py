@@ -16,16 +16,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from authlib.integrations.flask_client import OAuth
 
 app = Flask(__name__)
-# WARNING: In production, use a secure environment variable for this
-app.secret_key = os.environ.get("SECRET_KEY", "REPLACE_WITH_A_REAL_SECRET_KEY")
+# REQUIRED: Session security key
+app.secret_key = os.environ.get("SECRET_KEY", "REPLACE_WITH_A_REAL_SECRET_KEY_FOR_SESSION_SECURITY")
 CORS(app)
 
 # --- DATABASE SETUP (VERCEL FIX) ---
-# Vercel is Read-Only, so we must use the /tmp folder for the database
-db_path = os.path.join(os.getcwd(), 'vault.db') # Default for local computer
+# Default to local folder for your computer
+db_path = os.path.join(os.getcwd(), 'vault.db')
 
-# If running on Vercel (Production), switch to /tmp
-# This prevents the "Read-only file system" error
+# If running on Vercel, force usage of the /tmp directory (the only writable place)
 if os.environ.get('VERCEL'):
     db_path = '/tmp/vault.db'
 
@@ -40,8 +39,7 @@ login_manager.login_view = 'login'
 # --- OAUTH CONFIGURATION ---
 oauth = OAuth(app)
 
-# 1. GOOGLE
-# Ensure you update these with your Real Keys or Environment Variables
+# 1. GOOGLE CONFIG
 app.config['GOOGLE_CLIENT_ID'] = 'YOUR_GOOGLE_CLIENT_ID_HERE'
 app.config['GOOGLE_CLIENT_SECRET'] = 'YOUR_GOOGLE_CLIENT_SECRET_HERE'
 
@@ -55,7 +53,7 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'},
 )
 
-# 2. GITHUB
+# 2. GITHUB CONFIG
 app.config['GITHUB_CLIENT_ID'] = 'YOUR_GITHUB_CLIENT_ID_HERE'
 app.config['GITHUB_CLIENT_SECRET'] = 'YOUR_GITHUB_CLIENT_SECRET_HERE'
 
@@ -69,7 +67,7 @@ github = oauth.register(
     client_kwargs={'scope': 'user:email'},
 )
 
-# --- DATABASE MODELS ---
+# --- MODELS ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True, nullable=False)
@@ -85,7 +83,7 @@ class History(db.Model):
     filename = db.Column(db.String(200))
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-# Create DB Tables (Auto-create if missing)
+# Create DB Tables
 with app.app_context():
     db.create_all()
 
@@ -93,14 +91,14 @@ with app.app_context():
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- PROFILE API ---
+# --- ROUTES ---
+
 @app.route('/api/profile', methods=['GET'])
 @login_required
 def get_profile():
     encode_count = History.query.filter_by(user_id=current_user.id, action='encode').count()
     decode_count = History.query.filter_by(user_id=current_user.id, action='decode').count()
     total = encode_count + decode_count
-    
     level = "Level 1: Rookie"
     if total > 5: level = "Level 2: Agent"
     if total > 20: level = "Level 3: Operator"
@@ -123,7 +121,6 @@ def update_profile():
         return jsonify({'success': True})
     return jsonify({'error': 'Invalid Data'}), 400
 
-# --- AUTH ROUTES ---
 @app.route('/api/status')
 def auth_status():
     if current_user.is_authenticated:
@@ -157,7 +154,7 @@ def logout():
     logout_user()
     return jsonify({'success': True})
 
-# --- OAUTH CALLBACKS ---
+# --- OAUTH ROUTES ---
 @app.route('/google/login')
 def google_login():
     redirect_uri = url_for('google_authorize', _external=True)
@@ -186,11 +183,10 @@ def github_authorize():
     resp = github.get('user')
     user_info = resp.json()
     email = user_info.get('email')
-    if not email: # Handle private emails
+    if not email:
         emails = github.get('user/emails').json()
         for e in emails:
             if e['primary']: email = e['email']; break
-    
     user = User.query.filter_by(email=email).first()
     if not user:
         user = User(email=email, name=user_info.get('name') or user_info.get('login'), auth_type='github')
@@ -199,7 +195,6 @@ def github_authorize():
     login_user(user)
     return redirect('/')
 
-# --- HISTORY API ---
 @app.route('/api/history', methods=['GET'])
 def get_history():
     if not current_user.is_authenticated: return jsonify({'error': 'Unauthorized'}), 401
@@ -228,7 +223,6 @@ def encode():
         image_file, message, password = request.files['image'], request.form['message'], request.form.get('password', '')
 
         final_payload = (LOCKED_FLAG + Fernet(get_key(password)).encrypt(message.encode()).decode() + DELIMITER) if password else (message + DELIMITER)
-        
         img = Image.open(image_file).convert('RGB')
         pixels = img.load()
         binary_msg = ''.join(format(byte, '08b') for byte in final_payload.encode('utf-8'))
@@ -259,32 +253,28 @@ def decode():
     try:
         if 'image' not in request.files: return jsonify({"error": "Missing image"}), 400
         image_file, password = request.files['image'], request.form.get('password', '')
-        
         img = Image.open(image_file).convert('RGB')
         pixels = img.load()
         binary_data = ""
         for y in range(img.height):
             for x in range(img.width):
                 binary_data += str(pixels[x, y][0] & 1)
-
         all_bytes = [int(binary_data[i:i+8], 2) for i in range(0, len(binary_data), 8)]
         decoded_str = bytearray(all_bytes).decode('utf-8', errors='ignore')
-        
         if DELIMITER in decoded_str:
             content = decoded_str.split(DELIMITER)[0]
             if current_user.is_authenticated:
                 db.session.add(History(user_id=current_user.id, action='decode', filename=image_file.filename))
                 db.session.commit()
-
             if content.startswith(LOCKED_FLAG):
                 if not password: return jsonify({"error": "🔒 LOCKED. PASSWORD REQUIRED."}), 403
                 try: return jsonify({"message": Fernet(get_key(password)).decrypt(content[len(LOCKED_FLAG):].encode()).decode()})
                 except: return jsonify({"error": "⛔ WRONG PASSWORD"}), 403
             return jsonify({"message": content})
-            
         return jsonify({"error": "No hidden message found."}), 400
     except Exception as e: return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
+    # Ensure static folder exists locally
     if not os.path.exists('static'): os.makedirs('static')
     app.run(debug=True, port=5000)
