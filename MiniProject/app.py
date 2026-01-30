@@ -140,28 +140,28 @@ def decode():
 
         if full_content.startswith(LOCKED_FLAG):
             if not password:
-                return jsonify({"error": "🔒 LOCKED ARTIFACT. PASSWORD REQUIRED."}), 403
+                return jsonify({"error": "LOCKED Block . PASSWORD REQUIRED."}), 403
             try:
                 key = get_key(password)
                 f = Fernet(key)
                 original_message = f.decrypt(full_content[len(LOCKED_FLAG):].encode()).decode()
                 return jsonify({"message": original_message})
             except:
-                return jsonify({"error": "⛔ WRONG PASSWORD"}), 403
+                return jsonify({"error": " WRONG PASSWORD"}), 403
         
         elif full_content.startswith("gAAAAA"):
              # Legacy check
-            if not password: return jsonify({"error": "🔒 PASSWORD REQUIRED."}), 403
+            if not password: return jsonify({"error": "PASSWORD REQUIRED."}), 403
             try:
                 key = get_key(password)
                 f = Fernet(key)
                 msg = f.decrypt(full_content.encode()).decode()
                 return jsonify({"message": msg})
             except:
-                return jsonify({"error": "⛔ WRONG PASSWORD"}), 403
+                return jsonify({"error": "WRONG PASSWORD"}), 403
 
         else:
-            if password: return jsonify({"error": "⚠️ FILE NOT ENCRYPTED."}), 400
+            if password: return jsonify({"error": "FILE NOT ENCRYPTED."}), 400
             return jsonify({"message": full_content})
 
     except Exception as e:
