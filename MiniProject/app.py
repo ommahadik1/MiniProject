@@ -19,8 +19,15 @@ app = Flask(__name__)
 app.secret_key = "REPLACE_WITH_A_REAL_SECRET_KEY_FOR_SESSION_SECURITY"
 CORS(app)
 
-# --- DATABASE SETUP ---
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vault.db'
+# --- DATABASE SETUP (VERCEL FIX) ---
+# Vercel is Read-Only, so we must use the /tmp folder for the database
+db_path = os.path.join(os.getcwd(), 'vault.db') # Default for local computer
+
+# If running on Vercel (Production), switch to /tmp
+if os.environ.get('VERCEL'):
+    db_path = '/tmp/vault.db'
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -75,6 +82,7 @@ class History(db.Model):
     filename = db.Column(db.String(200))
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
+# Create DB Tables (Auto-create if missing)
 with app.app_context():
     db.create_all()
 
