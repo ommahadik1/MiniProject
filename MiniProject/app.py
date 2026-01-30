@@ -16,7 +16,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from authlib.integrations.flask_client import OAuth
 
 app = Flask(__name__)
-app.secret_key = "REPLACE_WITH_A_REAL_SECRET_KEY"
+app.secret_key = "REPLACE_WITH_A_REAL_SECRET_KEY_FOR_SESSION_SECURITY"
 CORS(app)
 
 # --- DATABASE SETUP ---
@@ -24,15 +24,14 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vault.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# --- LOGIN MANAGER ---
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# --- OAUTH SETUP ---
+# --- OAUTH CONFIGURATION ---
 oauth = OAuth(app)
 
-# 1. GOOGLE CONFIG
+# 1. GOOGLE
 app.config['GOOGLE_CLIENT_ID'] = 'YOUR_GOOGLE_CLIENT_ID_HERE'
 app.config['GOOGLE_CLIENT_SECRET'] = 'YOUR_GOOGLE_CLIENT_SECRET_HERE'
 
@@ -46,7 +45,7 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'},
 )
 
-# 2. GITHUB CONFIG
+# 2. GITHUB
 app.config['GITHUB_CLIENT_ID'] = 'YOUR_GITHUB_CLIENT_ID_HERE'
 app.config['GITHUB_CLIENT_SECRET'] = 'YOUR_GITHUB_CLIENT_SECRET_HERE'
 
@@ -60,13 +59,14 @@ github = oauth.register(
     client_kwargs={'scope': 'user:email'},
 )
 
-# --- MODELS ---
+# --- DATABASE MODELS ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=True) 
     name = db.Column(db.String(150))
-    auth_type = db.Column(db.String(50)) 
+    auth_type = db.Column(db.String(50))
+    joined_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
 class History(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -82,6 +82,36 @@ with app.app_context():
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# --- PROFILE API ---
+@app.route('/api/profile', methods=['GET'])
+@login_required
+def get_profile():
+    encode_count = History.query.filter_by(user_id=current_user.id, action='encode').count()
+    decode_count = History.query.filter_by(user_id=current_user.id, action='decode').count()
+    total = encode_count + decode_count
+    
+    level = "Level 1: Rookie"
+    if total > 5: level = "Level 2: Agent"
+    if total > 20: level = "Level 3: Operator"
+    if total > 50: level = "Level 4: Master"
+
+    return jsonify({
+        'name': current_user.name,
+        'email': current_user.email,
+        'auth_type': current_user.auth_type,
+        'stats': {'encoded': encode_count, 'decoded': decode_count, 'level': level}
+    })
+
+@app.route('/api/profile/update', methods=['POST'])
+@login_required
+def update_profile():
+    data = request.json
+    if 'name' in data:
+        current_user.name = data['name']
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'error': 'Invalid Data'}), 400
+
 # --- AUTH ROUTES ---
 @app.route('/api/status')
 def auth_status():
@@ -94,9 +124,8 @@ def register():
     data = request.json
     if User.query.filter_by(email=data['email']).first():
         return jsonify({'error': 'Email already exists'}), 400
-    
-    hashed_pw = generate_password_hash(data['password'], method='scrypt')
-    new_user = User(email=data['email'], password=hashed_pw, name=data['name'], auth_type='local')
+    hashed = generate_password_hash(data['password'], method='scrypt')
+    new_user = User(email=data['email'], password=hashed, name=data['name'], auth_type='local')
     db.session.add(new_user)
     db.session.commit()
     login_user(new_user)
@@ -143,39 +172,31 @@ def github_login():
 @app.route('/github/callback')
 def github_authorize():
     token = github.authorize_access_token()
-    # GitHub requires special handling to get the email if it's private
     resp = github.get('user')
     user_info = resp.json()
     email = user_info.get('email')
-    
-    if not email:
+    if not email: # Handle private emails
         emails = github.get('user/emails').json()
         for e in emails:
-            if e['primary']:
-                email = e['email']
-                break
+            if e['primary']: email = e['email']; break
     
     user = User.query.filter_by(email=email).first()
     if not user:
-        user = User(
-            email=email,
-            name=user_info.get('name') or user_info.get('login'),
-            auth_type='github'
-        )
+        user = User(email=email, name=user_info.get('name') or user_info.get('login'), auth_type='github')
         db.session.add(user)
         db.session.commit()
     login_user(user)
     return redirect('/')
 
-# --- CORE LOGIC ---
+# --- HISTORY API ---
 @app.route('/api/history', methods=['GET'])
 def get_history():
-    if not current_user.is_authenticated:
-        return jsonify({'error': 'Unauthorized'}), 401
+    if not current_user.is_authenticated: return jsonify({'error': 'Unauthorized'}), 401
     logs = History.query.filter_by(user_id=current_user.id).order_by(History.timestamp.desc()).limit(20).all()
     output = [{'action': l.action, 'filename': l.filename, 'timestamp': l.timestamp.strftime("%Y-%m-%d %H:%M")} for l in logs]
     return jsonify(output)
 
+# --- CORE LOGIC ---
 DELIMITER = "#####END#####"
 LOCKED_FLAG = "#####LOCKED#####"
 
@@ -230,7 +251,6 @@ def decode():
         
         img = Image.open(image_file).convert('RGB')
         pixels = img.load()
-        
         binary_data = ""
         for y in range(img.height):
             for x in range(img.width):
@@ -255,4 +275,5 @@ def decode():
     except Exception as e: return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
+    if not os.path.exists('static'): os.makedirs('static')
     app.run(debug=True, port=5000)

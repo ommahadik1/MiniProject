@@ -3,43 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Trithemius</title>
+    <title>HiddenByte</title>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
-    <div class="top-nav">
-        <span id="user-display" class="user-tag" style="display:none;">USER: GUEST</span>
-        <button class="nav-btn" onclick="checkAuthAndToggleHistory()">🕒 HISTORY</button>
-        <button id="logout-btn" class="nav-btn logout" onclick="logout()" style="display:none;">LOGOUT</button>
+    <aside class="sidebar">
+        <div class="sidebar-logo">HB</div>
+        <div class="sidebar-menu">
+            <button class="menu-item active" onclick="closeAllPanels()" title="Vault"><i class="fas fa-cube"></i></button>
+            <button class="menu-item" onclick="checkAuthAndOpen('profile')" title="Profile"><i class="fas fa-user-astronaut"></i></button>
+            <button class="menu-item" onclick="checkAuthAndOpen('history')" title="Secure Logs"><i class="fas fa-history"></i></button>
+            <button class="menu-item" onclick="checkAuthAndOpen('settings')" title="System Settings"><i class="fas fa-sliders-h"></i></button>
+        </div>
+        <div class="sidebar-auth">
+            <button id="side-login-btn" onclick="openLoginModal()" class="menu-item auth-btn" title="Login"><i class="fas fa-sign-in-alt"></i></button>
+            <button id="side-logout-btn" onclick="logout()" class="menu-item logout-btn" style="display:none;" title="Logout"><i class="fas fa-power-off"></i></button>
+        </div>
+    </aside>
+
+    <div id="panel-profile" class="slide-panel">
+        <div class="panel-header"><h3>OPERATIVE PROFILE</h3><button onclick="closeAllPanels()">×</button></div>
+        <div class="panel-content">
+            <div class="profile-header-s">
+                <img id="profile-avatar" src="" alt="Avatar">
+                <div class="p-info"><h2 id="profile-name">LOADING...</h2><span id="profile-level" class="status-badge">CLEARANCE CHECK</span></div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><label>ENCRYPTIONS</label><span id="stat-enc">0</span></div>
+                <div class="stat-card"><label>DECRYPTIONS</label><span id="stat-dec">0</span></div>
+            </div>
+            <div class="setting-group">
+                <label>CODENAME CHANGE</label>
+                <div class="input-row"><input type="text" id="update-name" class="compact-input"><button class="nav-btn primary compact" onclick="updateProfileName()">SAVE</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="panel-history" class="slide-panel">
+        <div class="panel-header"><h3>SECURE LOGS</h3><button onclick="closeAllPanels()">×</button></div>
+        <div id="history-list" class="history-list"></div>
+    </div>
+
+    <div id="panel-settings" class="slide-panel">
+        <div class="panel-header"><h3>SYSTEM CONFIG</h3><button onclick="closeAllPanels()">×</button></div>
+        <div class="panel-content">
+            <div class="setting-section">
+                <h4>VISUAL INTERFACE</h4>
+                <div class="theme-toggles">
+                    <button class="theme-btn active" onclick="setTheme('dark')"><i class="fas fa-moon"></i> DARK</button>
+                    <button class="theme-btn" onclick="setTheme('light')"><i class="fas fa-sun"></i> LIGHT</button>
+                </div>
+            </div>
+            <div class="setting-section">
+                <h4>CUSTOMIZATION</h4>
+                <div class="setting-row"><label>ACCENT COLOR</label><input type="color" id="accent-color-picker" value="#3b82f6" onchange="updateAccent(this.value)"></div>
+                <div class="setting-row"><label>GLASS TINT</label><input type="color" id="bg-color-picker" value="#0c0c0c" onchange="updateGlassTint(this.value)"></div>
+                <button class="reset-btn" onclick="resetTheme()">RESET TO DEFAULT</button>
+            </div>
+        </div>
     </div>
 
     <div id="login-modal" class="modal-overlay">
         <div class="login-card">
-            <button class="close-modal" onclick="closeModal()">×</button>
-            <div class="login-header">
-                <h2 id="modal-title">ACCESS VAULT</h2>
-                <p>Login to Save History & Share Files</p>
-            </div>
-            
-            <a href="/google/login" class="social-btn google">
-                <i class="fab fa-google"></i> Google
-            </a>
-            <a href="/github/login" class="social-btn github">
-                <i class="fab fa-github"></i> GitHub
-            </a>
-
+            <button class="close-modal" onclick="closeModal('login-modal')">×</button>
+            <div class="login-header"><h2>ACCESS VAULT</h2><p>Authentication Required</p></div>
+            <a href="/google/login" class="social-btn google"><i class="fab fa-google"></i> Google</a>
+            <a href="/github/login" class="social-btn github"><i class="fab fa-github"></i> GitHub</a>
             <div class="divider"><span>OR</span></div>
-
             <div id="login-form">
                 <input type="email" id="login-email" placeholder="Email Address" class="auth-input">
                 <input type="password" id="login-pass" placeholder="Password" class="auth-input">
                 <button class="auth-submit-btn" onclick="performLogin()">SIGN IN</button>
                 <p class="switch-auth">New here? <a onclick="switchMode('register')">Create Account</a></p>
             </div>
-
             <div id="register-form" style="display:none;">
                 <input type="text" id="reg-name" placeholder="Full Name" class="auth-input">
                 <input type="email" id="reg-email" placeholder="Email Address" class="auth-input">
@@ -51,72 +90,53 @@
         </div>
     </div>
 
-    <div id="history-panel" class="history-panel">
-        <div class="history-header">
-            <h3>SECURE LOGS</h3>
-            <button onclick="closeHistory()">×</button>
-        </div>
-        <div id="history-list" class="history-list"></div>
-    </div>
-
-    <div class="scene">
-        <div class="card" id="main-card">
-            
-            <div class="card-face card-front">
-                <header>
-                    <div class="status-badge">SYSTEM ONLINE</div>
-                    <h1>VAULT // LOCK</h1>
-                </header>
-                <div class="content-body">
-                    <div class="input-group">
-                        <label>SOURCE IMAGE</label>
-                        <div class="file-input-wrapper drop-zone" id="drop-encode">
-                            <input type="file" id="upload-encode" accept="image/*" class="hidden-input">
-                            <label for="upload-encode" class="custom-file-btn"><span>📂 SELECT IMAGE</span></label>
-                            <span id="file-name-encode" class="file-name-display">No file selected</span>
+    <div class="scene-wrapper">
+        <div class="scene">
+            <div class="card" id="main-card">
+                <div class="card-face card-front">
+                    <header><div class="status-badge">SYSTEM ONLINE</div><h1>VAULT // LOCK</h1></header>
+                    <div class="content-body">
+                        <div class="input-group">
+                            <label>SOURCE IMAGE</label>
+                            <div class="file-input-wrapper drop-zone" id="drop-encode">
+                                <input type="file" id="upload-encode" accept="image/*" class="hidden-input">
+                                <label for="upload-encode" class="custom-file-btn"><span>   SELECT IMAGE</span></label>
+                                <span id="file-name-encode" class="file-name-display">No file selected</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="input-group">
-                        <label>PAYLOAD</label>
-                        <textarea id="secret-message" placeholder="Input secret data..."></textarea>
-                        <input type="password" id="pass-encode" class="password-input" placeholder="ENCRYPTION KEY">
-                    </div>
-
-                    <button class="action-btn" onclick="encodeMessage()">ENCRYPT & DOWNLOAD</button>
-                    
-                    <div id="encode-actions" class="share-actions" style="display: none; margin-top: 10px;">
-                        <button onclick="checkAuthAndShare()" class="share-btn">
-                            <i class="fas fa-share-alt"></i> SHARE ENCRYPTED FILE
-                        </button>
-                    </div>
-
-                    <div id="encode-status" class="status">Ready</div>
-                </div>
-                <button class="flip-btn" onclick="flipCard()">SWITCH TO DECRYPT ↻</button>
-            </div>
-
-            <div class="card-face card-back">
-                <header>
-                    <div class="status-badge warning">DECRYPT MODE</div>
-                    <h1>VAULT // UNLOCK</h1>
-                </header>
-                <div class="content-body">
-                    <div class="input-group">
-                        <label>TARGET ARTIFACT</label>
-                        <div class="file-input-wrapper drop-zone" id="drop-decode">
-                            <input type="file" id="upload-decode" accept="image/*" class="hidden-input">
-                            <label for="upload-decode" class="custom-file-btn"><span>🔓 SELECT IMAGE</span></label>
-                            <span id="file-name-decode" class="file-name-display">No file selected</span>
+                        <div class="input-group">
+                            <label>PAYLOAD</label>
+                            <textarea id="secret-message" placeholder="Input secret data..."></textarea>
+                            <input type="password" id="pass-encode" class="password-input" placeholder="ENCRYPTION KEY">
                         </div>
+                        <button class="action-btn" onclick="encodeMessage()">ENCRYPT & DOWNLOAD</button>
+                        <div id="encode-actions" class="share-actions" style="display: none; margin-top: 10px;">
+                            <button onclick="checkAuthAndShare()" class="share-btn"><i class="fas fa-share-alt"></i> SHARE FILE</button>
+                        </div>
+                        <div id="encode-status" class="status">Ready</div>
                     </div>
-                    <div class="input-group">
-                        <label>SECURITY CLEARANCE</label>
-                        <input type="password" id="pass-decode" class="password-input" placeholder="DECRYPTION KEY">
-                        <div class="output-box"><p id="decoded-output" class="result-text">Awaiting Authorization...</p></div>
-                    </div>
-                    <button class="action-btn" onclick="decodeMessage()">DECRYPT ARTIFACT</button>
+                    <button class="flip-btn" onclick="flipCard()">SWITCH TO DECRYPT ↻</button>
                 </div>
-                <button class="flip-btn" onclick="flipCard()">↻ SWITCH TO ENCRYPT</button>
+                <div class="card-face card-back">
+                    <header><div class="status-badge warning">DECRYPT MODE</div><h1>VAULT // UNLOCK</h1></header>
+                    <div class="content-body">
+                        <div class="input-group">
+                            <label>TARGET ARTIFACT</label>
+                            <div class="file-input-wrapper drop-zone" id="drop-decode">
+                                <input type="file" id="upload-decode" accept="image/*" class="hidden-input">
+                                <label for="upload-decode" class="custom-file-btn"><span> SELECT IMAGE</span></label>
+                                <span id="file-name-decode" class="file-name-display">No file selected</span>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>SECURITY CLEARANCE</label>
+                            <input type="password" id="pass-decode" class="password-input" placeholder="DECRYPTION KEY">
+                            <div class="output-box"><p id="decoded-output" class="result-text">Awaiting Authorization...</p></div>
+                        </div>
+                        <button class="action-btn" onclick="decodeMessage()">DECRYPT ARTIFACT</button>
+                    </div>
+                    <button class="flip-btn" onclick="flipCard()">↻ SWITCH TO ENCRYPT</button>
+                </div>
             </div>
         </div>
     </div>
