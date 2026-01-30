@@ -3,32 +3,21 @@ const card = document.getElementById('main-card');
 const scene = document.querySelector('.scene');
 
 // --- PHYSICS VARIABLES ---
-// Tilt Variables
 let currentRotX = 0, currentRotY = 0;
 let targetRotX = 0, targetRotY = 0;
-
-// Flip Variables (We animate this in JS now, not CSS)
-let currentFlip = 0;
-let targetFlip = 0; // 0 for Encode, 180 for Decode
-
-// Spotlight Variables
+let currentFlip = 0, targetFlip = 0; // JS controls the flip now
 let currentX = 0, currentY = 0; 
 let targetX = 0, targetY = 0;
 
-// --- 1. MOUSE TRACKING ---
+// --- 1. MOUSE TRACKING (MAGNETIC POP) ---
 scene.addEventListener('mousemove', (e) => {
     const rect = scene.getBoundingClientRect();
     const xVal = e.clientX - rect.left - rect.width / 2;
     const yVal = e.clientY - rect.top - rect.height / 2;
 
-    // MAGNETIC "POP UP" MATH:
-    // Top (Neg Y) -> Needs Neg RotX to lift Top
-    // Bottom (Pos Y) -> Needs Pos RotX to lift Bottom
-    targetRotX = yVal / 15; // Higher sensitivity (lower divisor)
-
-    // Left (Neg X) -> Needs Pos RotY to lift Left
-    // Right (Pos X) -> Needs Neg RotY to lift Right
-    targetRotY = -xVal / 15; 
+    // Corrected Math: Top & Bottom, Left & Right all pop UP towards user.
+    targetRotX = yVal / 20; 
+    targetRotY = -xVal / 20; 
 
     // Spotlight Targets
     targetX = e.clientX - rect.left;
@@ -41,31 +30,30 @@ scene.addEventListener('mouseleave', () => {
     targetRotY = 0;
 });
 
-// --- 3. FLIP TRIGGER ---
+// --- 3. FLIP LOGIC ---
 function flipCard() {
-    // Toggle Target: If 0 -> 180. If 180 -> 0.
+    // Smoothly toggle between 0 and 180
     targetFlip = (targetFlip === 0) ? 180 : 0;
 }
 
-// --- 4. PHYSICS LOOP (The Engine) ---
+// --- 4. PHYSICS ENGINE (60 FPS) ---
 function updatePhysics() {
-    const smoothFactor = 0.1; // "Weight" of the card
-    const flipSmooth = 0.05;  // Slower smoothing for the Flip (cinematic)
+    const smoothFactor = 0.1; 
+    const flipSmooth = 0.05;
 
-    // Lerp Tilt
+    // Interpolate Tilt
     currentRotX += (targetRotX - currentRotX) * smoothFactor;
     currentRotY += (targetRotY - currentRotY) * smoothFactor;
 
-    // Lerp Flip (This fixes the broken flip!)
+    // Interpolate Flip
     currentFlip += (targetFlip - currentFlip) * flipSmooth;
 
-    // Lerp Spotlight
+    // Interpolate Spotlight
     currentX += (targetX - currentX) * smoothFactor;
     currentY += (targetY - currentY) * smoothFactor;
 
-    // --- APPLY TRANSFORMS ---
-    // If we are flipped (approx > 90), we invert the tilt control 
-    // so moving mouse "Left" still pops the "Left" side of the back face.
+    // Apply Transforms
+    // If flipped, invert tilt so controls feel natural
     let tiltMultiplier = (currentFlip > 90) ? -1 : 1;
 
     card.style.transform = `
@@ -74,7 +62,7 @@ function updatePhysics() {
         rotateY(${currentFlip + (currentRotY * tiltMultiplier)}deg)
     `;
 
-    // Update Spotlight
+    // Update Spotlight on all faces
     document.querySelectorAll('.card-face').forEach(face => {
         face.style.setProperty('--x', `${currentX}px`);
         face.style.setProperty('--y', `${currentY}px`);
@@ -82,9 +70,7 @@ function updatePhysics() {
 
     requestAnimationFrame(updatePhysics);
 }
-
-// Start Engine
-updatePhysics();
+updatePhysics(); // Start Engine
 
 // --- 5. DRAG & DROP LOGIC ---
 function setupDragDrop(dropZoneId, inputId, previewId, isEncode) {

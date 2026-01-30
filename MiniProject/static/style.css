@@ -15,7 +15,7 @@
 body {
     overflow: hidden; height: 100vh; width: 100vw;
     background-color: #090a0f; 
-    background-image: url('image_7.png'); 
+    background-image: url('image_7.png'); /* Ensure this image exists in your folder */
     background-repeat: no-repeat; background-position: center center; background-size: cover;
     display: flex; justify-content: center; align-items: center;
     font-family: var(--font-ui); color: var(--text-main);
@@ -25,17 +25,12 @@ body {
 .scene { width: 360px; height: 580px; position: relative; }
 
 .card {
-    width: 100%;
-    height: 100%;
-    position: relative;
+    width: 100%; height: 100%; position: relative;
     transform-style: preserve-3d;
-    
-    /* REMOVED 'transition: transform...' */
-    /* We only transition opacity or shadow if needed, but NOT transform */
-    
-    /* This optimizes rendering for the JS loop */
+    /* IMPORTANT: No transition here. JS handles the physics loop. */
     will-change: transform; 
 }
+
 .card-face {
     position: absolute; width: 100%; height: 100%;
     backface-visibility: hidden; border-radius: 16px;
@@ -48,6 +43,7 @@ body {
 
 .card-back { transform: rotateY(180deg); }
 
+/* Spotlight Effect */
 .card-face::before {
     content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     pointer-events: none;
@@ -76,7 +72,7 @@ h1 {
 .content-body { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
 .input-group label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; font-weight: 600; letter-spacing: 1px; }
 
-/* FILE BUTTON */
+/* FILE BUTTON (Glass White) */
 .file-input-wrapper {
     display: flex; align-items: center; gap: 12px;
     background: rgba(255,255,255,0.03); padding: 6px;
@@ -136,6 +132,16 @@ textarea:focus { outline: none; border-color: var(--accent); background: rgba(0,
 }
 .flip-btn:hover { color: #fff; text-shadow: 0 0 8px white; }
 
+/* OUTPUT BOX (Fixed for Formatting) */
 .output-box { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; height: 90px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); }
-.result-text { font-family: var(--font-code); font-size: 0.8rem; color: #10b981; word-break: break-all; }
+
+.result-text { 
+    font-family: var(--font-code); 
+    font-size: 0.8rem; 
+    color: #10b981; 
+    word-break: break-word; 
+    /* THIS FIXES THE FORMATTING ISSUE: */
+    white-space: pre-wrap; 
+}
+
 .status { text-align: center; font-size: 0.7rem; height: 15px; margin-top: 5px; color: var(--text-muted); font-weight: 600; }

@@ -1,17 +1,19 @@
 import os
 import base64
+import io
+# 1. IMPORTS MUST BE FIRST
 from flask import Flask, request, send_file, jsonify, send_from_directory
 from flask_cors import CORS
 from PIL import Image
-import io
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+# 2. CREATE APP INSTANCE IMMEDIATELY AFTER IMPORTS
 app = Flask(__name__)
 CORS(app)
 
-# FLAGS
+# 3. CONFIGURATION & HELPERS
 DELIMITER = "#####END#####"
 LOCKED_FLAG = "#####LOCKED#####"
 
@@ -25,6 +27,7 @@ def get_key(password):
     )
     return base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
+# 4. ROUTES
 @app.route('/')
 def index():
     return send_from_directory('static', 'index.html')
@@ -36,14 +39,16 @@ def static_files(path):
 @app.route('/api/encode', methods=['POST'])
 def encode():
     try:
+        print("--- STARTING ENCRYPTION ---")
         if 'image' not in request.files or 'message' not in request.form:
             return jsonify({"error": "Missing image or message"}), 400
 
         image_file = request.files['image']
         secret_message = request.form['message']
         password = request.form.get('password', '')
+        
+        print(f"Image received: {image_file.filename}")
 
-        # 1. SECURITY LOGIC
         if password:
             key = get_key(password)
             f = Fernet(key)
@@ -52,20 +57,8 @@ def encode():
         else:
             final_payload = secret_message + DELIMITER
 
-        # 2. IMAGE PROCESSING (Handle ANY format)
-        # We open the image and ensure it's in RGB mode.
-        # This handles JPG, BMP, GIF, WEBP automatically.
-        img = Image.open(image_file)
-        
-        # If it has transparency (RGBA), paste it onto white background to make it RGB
-        if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
-            alpha = img.convert('RGBA').split()[-1]
-            bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img, mask=alpha)
-            img = bg
-        else:
-            img = img.convert('RGB')
-
+        # Convert to RGB (removes transparency issues)
+        img = Image.open(image_file).convert('RGB')
         pixels = img.load()
         
         msg_bytes = final_payload.encode('utf-8')
@@ -73,9 +66,10 @@ def encode():
         
         data_len = len(binary_message)
         width, height = img.size
+        print(f"Payload Size: {data_len} bits. Image Capacity: {width*height} pixels.")
         
         if data_len > width * height:
-            return jsonify({"error": f"Data too large ({data_len} bits). Use larger image."}), 400
+            return jsonify({"error": f"Data too large. Use larger image."}), 400
         
         idx = 0
         for y in range(height):
@@ -92,23 +86,24 @@ def encode():
                 break
 
         img_io = io.BytesIO()
-        # ALWAYS save as PNG (Lossless) to preserve the hidden data
-        img.save(img_io, 'PNG')
+        img.save(img_io, 'PNG') # ALWAYS PNG
         img_io.seek(0)
         return send_file(img_io, mimetype='image/png', as_attachment=True, download_name='vault_secured.png')
 
     except Exception as e:
-        print("Encode Error:", e)
+        print(f"Encode Error: {e}")
         return jsonify({"error": "Encryption Failed"}), 500
 
 @app.route('/api/decode', methods=['POST'])
 def decode():
     try:
+        print("--- STARTING DECRYPTION ---")
         if 'image' not in request.files:
             return jsonify({"error": "Missing image"}), 400
 
         image_file = request.files['image']
         password = request.form.get('password', '')
+        print(f"Decoding file: {image_file.filename}")
         
         img = Image.open(image_file).convert('RGB')
         pixels = img.load()
@@ -138,6 +133,7 @@ def decode():
                             pass
         
         if not found:
+            print("ERROR: Delimiter not found. Data likely corrupted by compression.")
             return jsonify({"error": "No hidden message found."}), 400
 
         full_content = decoded_bytes[:-len(DELIMITER)].decode('utf-8', errors='ignore')
@@ -145,36 +141,31 @@ def decode():
         if full_content.startswith(LOCKED_FLAG):
             if not password:
                 return jsonify({"error": "🔒 LOCKED ARTIFACT. PASSWORD REQUIRED."}), 403
-            
-            encrypted_payload = full_content[len(LOCKED_FLAG):]
             try:
                 key = get_key(password)
                 f = Fernet(key)
-                original_message = f.decrypt(encrypted_payload.encode()).decode()
+                original_message = f.decrypt(full_content[len(LOCKED_FLAG):].encode()).decode()
                 return jsonify({"message": original_message})
             except:
-                return jsonify({"error": "⛔ ACCESS DENIED: WRONG PASSWORD"}), 403
+                return jsonify({"error": "⛔ WRONG PASSWORD"}), 403
         
         elif full_content.startswith("gAAAAA"):
-            if not password:
-                return jsonify({"error": "🔒 ENCRYPTED DATA DETECTED. PASSWORD REQUIRED."}), 403
-            
+             # Legacy check
+            if not password: return jsonify({"error": "🔒 PASSWORD REQUIRED."}), 403
             try:
                 key = get_key(password)
                 f = Fernet(key)
-                original_message = f.decrypt(full_content.encode()).decode()
-                return jsonify({"message": original_message})
+                msg = f.decrypt(full_content.encode()).decode()
+                return jsonify({"message": msg})
             except:
-                return jsonify({"error": " ACCESS DENIED: WRONG PASSWORD"}), 403
+                return jsonify({"error": "⛔ WRONG PASSWORD"}), 403
 
         else:
-            if password:
-                return jsonify({"error": "⚠️ WARNING: This file is NOT encrypted."}), 400
-            
+            if password: return jsonify({"error": "⚠️ FILE NOT ENCRYPTED."}), 400
             return jsonify({"message": full_content})
 
     except Exception as e:
-        print("Decode Error:", e)
+        print(f"Decode Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
