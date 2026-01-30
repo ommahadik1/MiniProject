@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Trithemius</title>
+    <title>HiddenByte</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -33,7 +35,10 @@
                 <div class="card-face card-front">
                     <header>
                         <div class="status-badge">SYSTEM ONLINE</div>
-                        <h1>VAULT // LOCK</h1>
+                        <div class="logo-container">
+                            <img src="logo.png" alt="HiddenByte Logo" class="main-logo">
+                        </div>
+                        <p class="mode-subtitle">ENCRYPTION PROTOCOL</p>
                     </header>
                     <div class="content-body">
                         <div class="input-group">
@@ -65,7 +70,10 @@
                 <div class="card-face card-back">
                     <header>
                         <div class="status-badge warning">DECRYPT MODE</div>
-                        <h1>VAULT // UNLOCK</h1>
+                         <div class="logo-container">
+                            <img src="logo.png" alt="HiddenByte Logo" class="main-logo">
+                        </div>
+                        <p class="mode-subtitle">DECRYPTION PROTOCOL</p>
                     </header>
                     <div class="content-body">
                         <div class="input-group">
@@ -93,6 +101,7 @@
         <div class="modal-card">
             <button class="close-modal" onclick="closeModal('login-modal')">×</button>
             <div class="modal-header">
+                <img src="logo.png" alt="Logo" style="width: 60px; margin-bottom: 10px;">
                 <h2>AUTHENTICATION</h2>
                 <p>Login to save history and share files.</p>
             </div>
