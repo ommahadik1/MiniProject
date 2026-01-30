@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HiddenByte</title>
+    <link rel="icon" type="image/png" href="logo.png" />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="top-controls">
+      <div id="auth-logged-out">
+        <button onclick="openLoginModal()" class="top-btn header-auth-btn">
+          <i class="fas fa-sign-in-alt"></i> ACCESS VAULT
+        </button>
+      </div>
+      <div id="auth-logged-in" style="display: none">
+        <span id="user-greeting"></span>
+        <button
+          onclick="openHistoryModal()"
+          class="top-btn"
+          title="View History"
+        >
+          <i class="fas fa-history"></i> LOGS
+        </button>
+        <button onclick="logout()" class="top-btn logout-btn" title="Logout">
+          <i class="fas fa-power-off"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="scene-wrapper">
+      <div class="scene">
+        <div class="card" id="main-card">
+          <div class="card-face card-front">
+            <header>
+              <div class="status-badge">SYSTEM ONLINE</div>
+
+              <p class="mode-subtitle">ENCRYPTION PROTOCOL</p>
+            </header>
+            <div class="content-body">
+              <div class="input-group">
+                <label>SOURCE IMAGE</label>
+                <div class="file-input-wrapper drop-zone" id="drop-encode">
+                  <input
+                    type="file"
+                    id="upload-encode"
+                    accept="image/*"
+                    class="hidden-input"
+                  />
+                  <label for="upload-encode" class="custom-file-btn"
+                    ><span>📂 SELECT IMAGE</span></label
+                  >
+                  <span id="file-name-encode" class="file-name-display"
+                    >No file selected</span
+                  >
+                </div>
+              </div>
+              <div class="input-group">
+                <label>PAYLOAD</label>
+                <textarea
+                  id="secret-message"
+                  placeholder="Input secret data..."
+                ></textarea>
+                <input
+                  type="password"
+                  id="pass-encode"
+                  class="password-input"
+                  placeholder="ENCRYPTION KEY (Optional)"
+                />
+              </div>
+              <button class="action-btn" onclick="encodeMessage()">
+                ENCRYPT & DOWNLOAD
+              </button>
+
+              <div
+                id="encode-actions"
+                class="share-actions"
+                style="display: none; margin-top: 10px"
+              >
+                <button onclick="checkAuthAndShare()" class="share-btn">
+                  <i class="fas fa-share-alt"></i> SHARE ENCRYPTED FILE
+                </button>
+              </div>
+
+              <div id="encode-status" class="status">Ready</div>
+            </div>
+            <button class="flip-btn" onclick="flipCard()">
+              SWITCH TO DECRYPT ↻
+            </button>
+          </div>
+
+          <div class="card-face card-back">
+            <header>
+              <div class="status-badge warning">DECRYPT MODE</div>
+              <!-- <div class="logo-container"> -->
+              <!-- <img src="logo.png" alt="HiddenByte Logo" class="main-logo" /> -->
+              <!-- </div> -->
+              <p class="mode-subtitle">DECRYPTION PROTOCOL</p>
+            </header>
+            <div class="content-body">
+              <div class="input-group">
+                <label>TARGET ARTIFACT</label>
+                <div class="file-input-wrapper drop-zone" id="drop-decode">
+                  <input
+                    type="file"
+                    id="upload-decode"
+                    accept="image/*"
+                    class="hidden-input"
+                  />
+                  <label for="upload-decode" class="custom-file-btn"
+                    ><span>🔓 SELECT IMAGE</span></label
+                  >
+                  <span id="file-name-decode" class="file-name-display"
+                    >No file selected</span
+                  >
+                </div>
+              </div>
+              <div class="input-group">
+                <label>SECURITY CLEARANCE</label>
+                <input
+                  type="password"
+                  id="pass-decode"
+                  class="password-input"
+                  placeholder="DECRYPTION KEY (If needed)"
+                />
+                <div class="output-box">
+                  <p id="decoded-output" class="result-text">Awaiting Authorization...
+                  </p>
+                </div>
+              </div>
+              <button class="action-btn" onclick="decodeMessage()">
+                DECRYPT ARTIFACT
+              </button>
+            </div>
+            <button class="flip-btn" onclick="flipCard()">
+              ↻ SWITCH TO ENCRYPT
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="login-modal" class="modal-overlay">
+      <div class="modal-card">
+        <button class="close-modal" onclick="closeModal('login-modal')">
+          ×
+        </button>
+        <div class="modal-header">
+          <img
+            src="logo.png"
+            alt="Logo"
+            style="width: 60px; margin-bottom: 10px"
+          />
+          <h2>AUTHENTICATION</h2>
+          <p>Login to save history and share files.</p>
+        </div>
+
+        <a href="/google/login" class="social-btn google"
+          ><i class="fab fa-google"></i> Google</a
+        >
+        <a href="/github/login" class="social-btn github"
+          ><i class="fab fa-github"></i> GitHub</a
+        >
+
+        <div class="divider"><span>OR</span></div>
+
+        <div id="login-form">
+          <input
+            type="email"
+            id="login-email"
+            placeholder="Email Address"
+            class="auth-input"
+          />
+          <input
+            type="password"
+            id="login-pass"
+            placeholder="Password"
+            class="auth-input"
+          />
+          <button class="auth-submit-btn" onclick="performLogin()">
+            SIGN IN
+          </button>
+          <p class="switch-auth">
+            New here? <a onclick="switchMode('register')">Create Account</a>
+          </p>
+        </div>
+
+        <div id="register-form" style="display: none">
+          <input
+            type="text"
+            id="reg-name"
+            placeholder="Full Name"
+            class="auth-input"
+          />
+          <input
+            type="email"
+            id="reg-email"
+            placeholder="Email Address"
+            class="auth-input"
+          />
+          <input
+            type="password"
+            id="reg-pass"
+            placeholder="Create Password"
+            class="auth-input"
+          />
+          <button class="auth-submit-btn" onclick="performRegister()">
+            REGISTER
+          </button>
+          <p class="switch-auth">
+            Have an account? <a onclick="switchMode('login')">Sign In</a>
+          </p>
+        </div>
+        <div id="auth-error" class="auth-error"></div>
+      </div>
+    </div>
+
+    <div id="history-modal" class="modal-overlay">
+      <div class="modal-card history-card-size">
+        <button class="close-modal" onclick="closeModal('history-modal')">
+          ×
+        </button>
+        <div class="modal-header">
+          <h2>SECURE LOGS</h2>
+          <p>Recent encryption/decryption activity.</p>
+        </div>
+        <div id="history-list" class="history-list-container"></div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
